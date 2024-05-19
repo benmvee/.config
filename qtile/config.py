@@ -9,27 +9,40 @@ from libqtile.config import Click, Drag, Group, Key, Match, Screen
 from libqtile.lazy import lazy
 import colours
 
+### GET SESSION TYPE
 if qtile.core.name == "x11":
     x11 = True
     wayland = False
-    start = '~/.config/qtile/x11.sh'
-    launcher = "rofi -combi-modi window,drun,ssh -theme solarized -font \"hack 10\" -show combi"
 elif qtile.core.name == "wayland":
     wayland = True
     x11 = False
-    start = '~/.config/qtile/wayland.sh'
-    launcher = "fuzzel"
 
-### STARTUP
+
+def run_command(command):
+    try:
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(f"Command '{command}' executed successfully: {result.stdout.decode()}")
+    except subprocess.CalledProcessError as e:
+        print(f"Command '{command}' failed with error: {e.stderr.decode()}")
+
 @hook.subscribe.startup_once
-def autostart():
-    home = os.path.expanduser(start)
-    subprocess.Popen([home])
-    
+def autostart_once():
+    if x11:
+        run_command("nm-applet --indicator")
+        run_command("pa-applet")
+        run_command("picom")
+        run_command("xset s off -dpms &") # Disable screen saver and DPMS (Energy Star) features
+    elif wayland:
+        run_command("kanshi")
+    run_command("lxsession")
+
 @hook.subscribe.startup
 def autostart():
-    os.system("setxkbmap gb")
-    os.system('~/.config/screens.sh')
+    run_command("setxkbmap gb")
+    if x11:
+        run_command('~/.config/screens.sh')
+        run_command("nm-applet --indicator")
+
 
 
 ### MODIFIER
@@ -39,6 +52,11 @@ mod = "mod4"
 terminal = "alacritty"
 browser = "google-chrome"
 files = "dolphin"
+
+if x11:
+    launcher = "rofi -combi-modi window,drun,ssh -theme solarized -font \"hack 10\" -show combi"
+elif wayland:
+    launcher = "fuzzel"
 
 
 ### KEYS
