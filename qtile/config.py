@@ -2,127 +2,25 @@
 ### benmv qtile config ###
 ##########################
 
-import os
-import subprocess
-from libqtile import bar, layout, widget, hook, qtile
-from libqtile.config import Click, Drag, Group, Key, Match, Screen
+from start import start, screencheck
+from libqtile import layout, hook, qtile
+from libqtile.config import Click, Drag, Match, Screen
 from libqtile.lazy import lazy
-import colours
-
-### GET SESSION TYPE
-if qtile.core.name == "x11":
-    x11 = True
-    wayland = False
-elif qtile.core.name == "wayland":
-    wayland = True
-    x11 = False
-
-
-def run_command(command):
-    try:
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(f"Command '{command}' executed successfully: {result.stdout.decode()}")
-    except subprocess.CalledProcessError as e:
-        print(f"Command '{command}' failed with error: {e.stderr.decode()}")
+import mybar
+from keys import keys
+from groups import groups
+from defaults import mod
+from layouts import layouts
 
 @hook.subscribe.startup_once
 def autostart_once():
-    if x11:
-        run_command("nm-applet --indicator")
-        run_command("pa-applet")
-        run_command("picom")
-        run_command("xset s off -dpms &") # Disable screen saver and DPMS (Energy Star) features
-    elif wayland:
-        run_command("kanshi")
-    run_command("lxsession")
+    start(1)
 
 @hook.subscribe.startup
 def autostart():
-    run_command("setxkbmap gb")
-    if x11:
-        run_command('~/.config/screens.sh')
-        run_command("nm-applet --indicator")
-
-
-
-### MODIFIER
-mod = "mod4"
-
-### SHORTCUTS
-terminal = "alacritty"
-browser = "google-chrome"
-files = "dolphin"
-
-if x11:
-    launcher = "rofi -combi-modi window,drun,ssh -theme solarized -font \"hack 10\" -show combi"
-elif wayland:
-    launcher = "fuzzel"
-
-
-### KEYS
-
-keys = [
-    # Switching windows.
-    Key([mod], "Left", lazy.layout.left(), desc="Move focus to left"),
-    Key([mod], "Right", lazy.layout.right(), desc="Move focus to right"),
-    Key([mod], "Down", lazy.layout.down(), desc="Move focus down"),
-    Key([mod], "Up", lazy.layout.up(), desc="Move focus up"),
-    Key([mod], "space", lazy.layout.next(), desc="Move window focus to other window"),
-
-    # Moving windows.
-    Key([mod, "shift"], "Left", lazy.layout.swap_left(), desc="Move window to the left"),
-    Key([mod, "shift"], "Right", lazy.layout.swap_right(), desc="Move window to the right"),
-    Key([mod, "shift"], "Down", lazy.layout.shuffle_down(), desc="Move window down"),
-    Key([mod, "shift"], "Up", lazy.layout.shuffle_up(), desc="Move window up"),
-
-    # Resizing windows.
-    Key([mod, "control"], "Left", lazy.layout.normalize(), desc="Normalize Monad layout"),
-    Key([mod, "control"], "Right", lazy.layout.maximize(), desc="Maximize focused window in Monad layout"),
-    Key([mod, "control"], "Down", lazy.layout.shrink(), desc="Shrink window in Monad layout"),
-    Key([mod, "control"], "Up", lazy.layout.grow(), desc="Grow window in Monad layout"),
-
-    # Killing windows.
-    Key([mod], "w", lazy.window.kill(), desc="Kill focused window"),
-
-    # Toggle layouts.
-    Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
-    Key([mod], "t", lazy.window.toggle_floating(), desc="Toggle floating on the focused window"),
-    Key([mod, "shift"], "space", lazy.layout.flip()),
-
-    # Launching things.
-    Key([mod], "b", lazy.spawn(browser), desc="Launch browser"),
-    Key([mod], "d", lazy.spawn(launcher), desc="Launch launcher"),
-    Key([mod], "f", lazy.spawn(files), desc="Launch file manager"),
-    Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal"),
-    Key([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
-
-    # Session management.
-    Key([mod, "control"], "r", lazy.reload_config(), desc="Reload the config"),
-    Key([mod, "control"], "q", lazy.shutdown(), desc="Shutdown Qtile"),
-]
-
-### GROUPS
-groups = [Group(i) for i in "123456789"]
-for i in groups:
-    keys.extend(
-        [
-            # mod1 + letter of group = switch to group
-            Key([mod], i.name, lazy.group[i.name].toscreen(), desc="Switch to group {}".format(i.name),),
-            # mod1 + shift + letter of group = switch to & move focused window to group
-            Key([mod, "shift"], i.name, lazy.window.togroup(i.name, switch_group=True), desc="Switch to & move focused window to group {}".format(i.name),),
-            # # mod1 + control + letter of group = move focused window to group
-            Key([mod, "control"], i.name, lazy.window.togroup(i.name), desc="move focused window to group {}".format(i.name)),
-        ]
-    )
-
-### DEFAULTS
-
-layout_defaults = dict(
-    margin = 8,
-    border_width = 0,
-    border_focus = "87CEEB",
-    border_normal = "4682B4"
-)
+    start()
+    screencheck()
+    
 
 widget_defaults = dict(
     font = "Fira Sans Mono Bold",
@@ -131,110 +29,17 @@ widget_defaults = dict(
     padding = 3
 )
 
-def barSeparator():
-    separator = widget.Sep(linewidth = 0,
-        size_percent = 35,
-        padding = 20)
-    return separator
-
-extension_defaults = widget_defaults.copy()
-
-layouts = [
-    layout.MonadThreeCol(**layout_defaults),
-    layout.MonadTall(**layout_defaults),
-    layout.Max()
-]
-
-
-### BAR
-
-def makeBar(primary=False):
-    widgets = [
-        widget.GroupBox(
-            highlight_method='line',
-            highlight_color=['00000000', '00000000'],
-            this_current_screen_border='87CEEB',
-            this_screen_border='4682B4',
-            other_current_screen_border='87CEEB',
-            other_screen_border='676767',
-            rounded=False
-        ),
-        widget.Spacer(10),
-        widget.Prompt(
-            prompt="[benmv@archlinux ~]$ ",
-            font="Hack Bold",
-            cursorblink=0.3
-        ),
-        widget.Spacer(),
-        barSeparator(),
-        widget.Net(
-            format="SPEED: {up:.1f}{up_suffix} ↑↓ {down:.1f}{down_suffix}",
-            prefix='M',
-            foreground=colours.pastel['Yellow'],
-            width=170
-        ),
-        barSeparator(),
-        widget.Load(
-            format="LOAD: {load:.1f} ({time})",
-            foreground=colours.pastel['Pink']
-            ),
-        barSeparator(),
-        widget.Memory(
-            format="MEMORY: {MemUsed: .0f}{mm}/{MemTotal: .0f}{mm}",
-            foreground=colours.pastel['Blue']
-            ),
-        barSeparator(),
-        widget.CPU(
-            format="CPU: {freq_current}GHz {load_percent}%",
-            foreground=colours.pastel['Purple'],
-            width=125
-        ),
-        barSeparator(),
-        widget.Battery(
-            format="BATTERY: {percent:2.0%} ({hour:d}:{min:02d})",
-            foreground=colours.pastel['Orange'],
-            low_oreground=colours.pastel['Orange']
-        ),
-        barSeparator(),
-        widget.KeyboardLayout(
-            foreground=colours.pastel['Blue'],
-        ),
-        barSeparator(),
-        widget.Clock(
-            format="%Y-%m-%d %H:%M:%S",
-            foreground=colours.pastel['Green']
-        ),
-        barSeparator()
-    ]
-
-    if primary:
-        widgets.extend([
-            widget.Systray(),
-            widget.Spacer(2),
-            widget.CurrentLayoutIcon(scale=0.5),
-            widget.Spacer(4)
-        ])
-    else:
-        widgets.extend([
-            widget.Spacer(length=2),
-            widget.CurrentLayoutIcon(scale=0.5),
-            widget.Spacer(4)
-        ])
-
-    thisBar = bar.Bar(widgets, 30, margin = [0,8,8,8], background=["000000"])
-    return thisBar
-
 wallpaper_default = 'Wallpapers/5.jpg'
 wallpaper_mode_default = 'stretch'
 
 screens = [
     Screen(
-        bottom=makeBar(1),
+        bottom=mybar.makeBar(1),
         wallpaper=wallpaper_default,
         wallpaper_mode=wallpaper_mode_default
     ),
     Screen(
-        bottom=makeBar(),
+        bottom=mybar.makeBar(),
         wallpaper=wallpaper_default,
         wallpaper_mode=wallpaper_mode_default
     )
@@ -263,6 +68,9 @@ floating_layout = layout.Floating(
         Match(wm_class="ssh-askpass"),  # ssh-askpass
         Match(title="branchdialog"),  # gitk
         Match(title="pinentry"),  # GPG key password entry
+        Match(wm_class='Steam'),
+        Match(wm_class='steam'),
+        Match(wm_class='game'),
     ]
 )
 auto_fullscreen = True

@@ -1,0 +1,21 @@
+# Ignore everything
+*
+
+# Don't ignore the .gitignore file itself
+!.gitignore
+
+# Don't ignore directories (necessary to unignore files within them)
+!/qtile
+!/alacritty
+!/picom
+!/kanshi
+
+!/qtile/config.py
+!/qtile/defaults.py
+!/qtile/groups.py
+!/qtile/keys.py
+!/qtile/layouts.py
+!/qtile/mybar.py
+!/qtile/mycolours.py
+!/qtile/screens.sh
+!/qtile/start.py
